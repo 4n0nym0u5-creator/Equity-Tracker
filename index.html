@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Equity Performance Tracker — Multi-Asset Dashboard &amp; 200-Week MA Signals</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%234dc3ff'/><text x='50' y='66' font-size='44' font-family='monospace' font-weight='800' text-anchor='middle' fill='%2304121a'>E</text></svg>" />
+</head>
+<body>
+<div class="grid-overlay"></div>
+
+<div class="wrap">
+
+  <!-- ============================ header ============================ -->
+  <header>
+    <div class="brand">
+      <div class="logo">EPT</div>
+      <div>
+        <h1>Equity <span>Performance Tracker</span></h1>
+        <p>Multi-Asset Dashboard · Real-Time Signals</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="live-pill"><span class="live-dot"></span><span id="asOf">loading…</span></div>
+      <button id="refreshBtn" class="refresh-btn" title="Re-run the scraper (Yahoo Finance + AustralianSuper) and reload data" aria-label="Refresh live data">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="23 4 23 10 17 10"/>
+          <polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        <span id="refreshLabel">Refresh data</span>
+      </button>
+    </div>
+  </header>
+
+  <nav>
+    <a href="#signal">NDQ 200-Week MA</a>
+    <a href="#hndq">HNDQ 200-Week MA</a>
+    <a href="#tech">US Tech Giants</a>
+    <a href="#returns">Returns</a>
+    <a href="#growth">Growth</a>
+    <a href="#hedge">Hedged vs Unhedged</a>
+    <a href="#musk">Tesla &amp; SpaceX</a>
+    <a href="#compare">Comparison</a>
+    <a href="#methodology">Method</a>
+  </nav>
+
+  <!-- ============================ KPIs ============================== -->
+  <section id="top">
+    <div class="eyebrow">Snapshot</div>
+    <h2>Where NDQ sits right now</h2>
+
+    <div class="kpis">
+      <div class="kpi accent">
+        <div class="label">NDQ price</div>
+        <div class="value" id="kPrice">—</div>
+        <div class="foot" id="kPriceDate">—</div>
+      </div>
+      <div class="kpi warn">
+        <div class="label">200-week MA</div>
+        <div class="value" id="kMa">—</div>
+        <div class="foot" id="kMaNote">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Price vs 200WMA</div>
+        <div class="value" id="kVsMa">—</div>
+        <div class="foot" id="kVsMaNote">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Buy zones (history)</div>
+        <div class="value" id="kZones">—</div>
+        <div class="foot" id="kZonesNote">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">NDQ 10-year return</div>
+        <div class="value pos" id="k10y">—</div>
+        <div class="foot" id="k10yNote">—</div>
+      </div>
+    </div>
+
+    <div class="eyebrow" style="margin-top: 28px;">Hedged Pair</div>
+    <h2 style="font-size: 20px;">Where HNDQ sits right now</h2>
+
+    <div class="kpis">
+      <div class="kpi accent" style="border-color: rgba(157,123,255,0.4); background: linear-gradient(160deg, rgba(157,123,255,.12), rgba(255,255,255,.03) 55%);">
+        <div class="label">HNDQ price</div>
+        <div class="value" id="hndqPrice">—</div>
+        <div class="foot" id="hndqPriceDate">—</div>
+      </div>
+      <div class="kpi warn" style="border-color: rgba(157,123,255,0.25);">
+        <div class="label">200-week MA</div>
+        <div class="value" id="hndqMa">—</div>
+        <div class="foot" id="hndqMaNote">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Price vs 200WMA</div>
+        <div class="value" id="hndqVsMa">—</div>
+        <div class="foot" id="hndqVsMaNote">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Buy zones (history)</div>
+        <div class="value" id="hndqZonesCount">—</div>
+        <div class="foot" id="hndqZonesNote">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">HNDQ 5-year return</div>
+        <div class="value pos" id="hndq5y">—</div>
+        <div class="foot" id="hndq5yNote">—</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 200-week MA signal ======================= -->
+  <section id="signal">
+    <div class="eyebrow">Indicator</div>
+    <h2>200-week moving average buy signal</h2>
+    <p class="section-sub">
+      The 200-week simple moving average is a classic long-term trend line. When NDQ's weekly close
+      dips <b>below</b> it, the indicator flags a potential accumulation opportunity — historically a
+      rare event for this ETF.
+    </p>
+
+    <div class="signal-banner above" id="signalBanner">
+      <span class="signal-badge" id="signalBadge">—</span>
+      <div class="txt" id="signalText">—</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>NDQ weekly close vs 200-week MA · since 2015</h3>
+          <div class="hint">Red markers &amp; shaded bands = weekly closes below the 200WMA (buy signal)</div>
+        </div>
+        <div class="legend-chips">
+          <span class="chip"><i style="background:#4dc3ff"></i>NDQ weekly</span>
+          <span class="chip"><i style="background:#ffb020"></i>200WMA</span>
+          <span class="chip"><i style="background:#ff5c6c"></i>Buy signal</span>
+        </div>
+      </div>
+      <div id="chartMain" class="chart chart-xl"></div>
+    </div>
+
+    <div class="zones" id="zones"></div>
+  </section>
+
+  <!-- ===================== HNDQ 200-week MA ======================== -->
+  <section id="hndq">
+    <div class="eyebrow">Hedged Pair</div>
+    <h2>HNDQ.AX — 200-week MA buy signals</h2>
+    <p class="section-sub">
+      HNDQ is the same NASDAQ-100 portfolio with AUD currency hedging. Because it launched in July 2020,
+      its 200-week MA history is shorter, but the same accumulation logic applies when price falls below.
+    </p>
+
+    <div class="signal-banner above" id="hndqBanner">
+      <span class="signal-badge" id="hndqBadge">—</span>
+      <div class="txt" id="hndqText">—</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>HNDQ weekly close vs 200-week MA · since Jul 2020</h3>
+          <div class="hint">Red markers &amp; shaded bands = weekly closes below the 200WMA (buy signal)</div>
+        </div>
+        <div class="legend-chips">
+          <span class="chip"><i style="background:#9d7bff"></i>HNDQ weekly</span>
+          <span class="chip"><i style="background:#ffb020"></i>200WMA</span>
+          <span class="chip"><i style="background:#ff5c6c"></i>Buy signal</span>
+        </div>
+      </div>
+      <div id="chartHndqMa" class="chart chart-lg"></div>
+    </div>
+
+    <div class="zones" id="hndqZones"></div>
+  </section>
+
+  <!-- ===================== US Tech Giants ======================== -->
+  <section id="tech">
+    <div class="eyebrow">US Mega Caps</div>
+    <h2>Magnificent 8 — 200-Week MA Signals</h2>
+    <p class="section-sub">
+      Eight of the largest US tech giants compared: Alphabet (GOOGL/GOOG), Apple (AAPL), Amazon (AMZN),
+      Meta (META), Microsoft (MSFT), Netflix (NFLX), and NVIDIA (NVDA). Each card shows current price,
+      distance from 200-week MA (buy signal when below), and historical buy zones.
+    </p>
+
+    <!-- Tech Stock Grid -->
+    <div class="tech-grid" id="techGrid"></div>
+
+    <!-- Combined 200WMA Comparison Chart -->
+    <div class="card" style="margin-top: 24px;">
+      <div class="card-head">
+        <div>
+          <h3>200-Week MA Status — All 8 Stocks</h3>
+          <div class="hint">Percent above/below 200-week moving average (negative = potential buy zone)</div>
+        </div>
+      </div>
+      <div id="chartTechMa" class="chart chart-md"></div>
+    </div>
+
+    <!-- Tech Stocks Detail Cards -->
+    <div class="tech-cards" id="techCards"></div>
+  </section>
+
+  <!-- ====================== trailing returns ======================== -->
+  <section id="returns">
+    <div class="eyebrow">Performance indicators</div>
+    <h2>Trailing returns — 1, 3, 5 &amp; 10 years</h2>
+    <p class="section-sub">
+      Annualised total returns calculated from real daily data. NDQ &amp; HNDQ include reinvested
+      distributions (adjusted close); AustralianSuper options are shown at their published daily
+      crediting rates (net of investment fees &amp; tax).
+    </p>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>Annualised return (% p.a.)</h3>
+          <div class="hint">HNDQ launched July 2020 — 10-year figure not yet available</div>
+        </div>
+      </div>
+      <div id="chartReturns" class="chart chart-md"></div>
+    </div>
+  </section>
+
+  <!-- ========================= growth chart ========================= -->
+  <section id="growth">
+    <div class="eyebrow">Long-term compounding</div>
+    <h2>Growth of $100 invested in May 2015</h2>
+    <p class="section-sub">
+      $100 invested at NDQ's inception (26 May 2015) versus the same $100 in AustralianSuper's
+      International Shares and Australian Shares options — all from real historical data.
+    </p>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>Indexed value of $100 · weekly</h3>
+          <div class="hint">NDQ total return incl. distributions · AusSuper options at daily crediting rates</div>
+        </div>
+        <div class="legend-chips">
+          <label class="chip" style="cursor:pointer;user-select:none">
+            <input type="checkbox" id="logToggle" style="accent-color:#4dc3ff;margin-right:2px"> log scale
+          </label>
+        </div>
+      </div>
+      <div id="chartGrowth" class="chart chart-lg"></div>
+    </div>
+  </section>
+
+  <!-- ========================= hedge chart ========================== -->
+  <section id="hedge">
+    <div class="eyebrow">Currency impact</div>
+    <h2>NDQ vs HNDQ — hedged vs unhedged since July 2020</h2>
+    <p class="section-sub">
+      HNDQ is the same NASDAQ-100 portfolio with AUD currency hedging (launched 20 July 2020).
+      The gap between the lines is the effect of the AUD/USD exchange rate on returns.
+    </p>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>Indexed value of $100 · rebased 20 July 2020</h3>
+          <div class="hint">All series total return · AusSuper International Shares (unhedged) for context</div>
+        </div>
+      </div>
+      <div id="chartHedge" class="chart chart-lg"></div>
+    </div>
+  </section>
+
+  <!-- ====================== Tesla & SpaceX ========================== -->
+  <section id="musk">
+    <div class="eyebrow">Single names</div>
+    <h2>Tesla &amp; SpaceX</h2>
+    <p class="section-sub">
+      Two Musk bellwethers against the NDQ benchmark. <b>Tesla (TSLA)</b> gets the full 200-week MA
+      treatment on 11+ years of daily data. <b>SpaceX</b> was private until its record-breaking NASDAQ
+      IPO (ticker SPCX) on 12 June 2026 — so its history is shown as press-reported funding-round and
+      tender valuations, switching to real daily market data from listing day.
+    </p>
+
+    <!-- Tesla -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3><span class="series-dot" style="background:#ff4d6d"></span>Tesla (TSLA) — 200-week MA buy signals</h3>
+          <div class="hint">Weekly closes vs 200WMA · red zones = below MA · USD</div>
+        </div>
+      </div>
+
+      <div class="kpis kpis-slim">
+        <div class="kpi">
+          <div class="label">TSLA price</div>
+          <div class="value" id="tPrice">—</div>
+          <div class="foot" id="tPriceNote">—</div>
+        </div>
+        <div class="kpi">
+          <div class="label">TSLA 200-week MA</div>
+          <div class="value" id="tMa">—</div>
+          <div class="foot">200-week simple moving average</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Price vs 200WMA</div>
+          <div class="value" id="tVsMa">—</div>
+          <div class="foot" id="tVsMaNote">—</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Buy zones</div>
+          <div class="value" id="tZones">—</div>
+          <div class="foot" id="tZonesNote">—</div>
+        </div>
+        <div class="kpi">
+          <div class="label">TSLA 10-year return</div>
+          <div class="value pos" id="t10y">—</div>
+          <div class="foot" id="t10yNote">—</div>
+        </div>
+      </div>
+
+      <div id="chartTsla" class="chart chart-lg"></div>
+
+      <div class="zone-chips" id="tslaZones"></div>
+    </div>
+
+    <!-- SpaceX -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3><span class="series-dot" style="background:#e8ecf4"></span>SpaceX (SPCX) — $1.3B startup to the biggest IPO in history</h3>
+          <div class="hint">Log scale · dashed = private funding-round / tender valuations (press-reported) · solid green = real SPCX market data since the 12 Jun 2026 IPO</div>
+        </div>
+      </div>
+
+      <div class="kpis kpis-slim">
+        <div class="kpi">
+          <div class="label">SPCX price</div>
+          <div class="value" id="xPrice">—</div>
+          <div class="foot" id="xPriceNote">—</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Since IPO</div>
+          <div class="value" id="xSinceIpo">—</div>
+          <div class="foot" id="xSinceIpoNote">—</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Implied market cap</div>
+          <div class="value" id="xCap">—</div>
+          <div class="foot" id="xCapNote">—</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Debut-week peak close</div>
+          <div class="value" id="xPeak">—</div>
+          <div class="foot" id="xPeakNote">—</div>
+        </div>
+      </div>
+
+      <div id="chartSpcx" class="chart chart-lg"></div>
+      <div class="footnote-line">
+        SpaceX has no public price history before 12 June 2026 — the dashed line joins discrete, press-reported
+        valuations (CNBC, CNN, Forbes, Bloomberg, BBC, The Times); it is not a traded price series. Post-IPO
+        market cap is implied from SPCX closes × ~13.33B shares ($1.8T at the $135 IPO price).
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================== comparison table ======================== -->
+  <section id="compare">
+    <div class="eyebrow">Side by side</div>
+    <h2>Full comparison table</h2>
+    <p class="section-sub">
+      Computed from the real daily series shown above, plus AustralianSuper's own officially
+      published figures (adviser performance report) for cross-checking. Best in each column is
+      highlighted.
+    </p>
+
+    <div class="card">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Investment</th>
+              <th>1 Yr</th>
+              <th>3 Yrs p.a.</th>
+              <th>5 Yrs p.a.</th>
+              <th>10 Yrs p.a.</th>
+              <th>Since inc. p.a.</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyCompare"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================= methodology ========================== -->
+  <section id="methodology">
+    <div class="eyebrow">Transparency</div>
+    <h2>Data sources &amp; method</h2>
+  </section>
+
+  <footer>
+    <div><b>Real data only.</b> Every number on this page is pulled programmatically from the sources
+    below at generation time — nothing is mocked or hand-entered.</div>
+    <div class="src" id="sources"></div>
+    <div class="disclaimer">
+      <b>Method notes.</b> NDQ/HNDQ returns are total returns computed from Yahoo Finance adjusted
+      closes (distributions reinvested). The 200-week MA is a simple moving average of Friday-week
+      closes; MA history begins March 2019 once 200 weeks of NDQ data exist. AustralianSuper option
+      returns are daily crediting rates from AustralianSuper's own performance API — these are net of
+      investment fees, costs and tax, so they are not a perfectly like-for-like comparison with gross
+      ETF returns. AustralianSuper options are only available inside super. This page is information,
+      not financial advice. Past performance isn't a reliable indicator of future performance.
+    </div>
+    <div class="disclaimer" id="generated" style="margin-top:10px"></div>
+  </footer>
+
+</div>
+
+<script src="vendor/echarts.min.js"></script>
+<script src="data/dashboard.js"></script>
+<script src="js/app.js"></script>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
