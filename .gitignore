@@ -12,7 +12,6 @@ env/
 # Data files
 data/raw/*.json
 data/raw/*.xlsx
-data/dashboard.js
 
 # IDE
 .vscode/
