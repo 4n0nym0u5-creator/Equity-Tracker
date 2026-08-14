@@ -858,9 +858,25 @@ window.NDQInit = function () {
   var pill = document.getElementById("asOf");
   var label = document.getElementById("refreshLabel");
   
-  // Detect GitHub Pages
-  var isGitHubPages = location.hostname.includes("github.io") || 
-                       location.hostname.includes("githubusercontent.com");
+  // Detect GitHub Pages - multiple methods for reliability
+  var isGitHubPages = false;
+  try {
+    var hostname = location.hostname.toLowerCase();
+    var pathname = location.pathname.toLowerCase();
+    isGitHubPages = (
+      hostname.includes("github.io") ||
+      hostname.includes("githubusercontent.com") ||
+      pathname.includes("/equity-tracker/") ||
+      document.querySelector('meta[name="github-pages"]') !== null
+    );
+    // Also check if we're on a static host without API
+    if (!isGitHubPages && window.location.protocol === 'https:') {
+      // Likely a static host if we can't reach the API
+      console.log("Refresh: Detected HTTPS host, will try API first then fallback");
+    }
+  } catch (e) {
+    console.warn("Refresh detection error:", e);
+  }
 
   function setSpin(on) {
     btn.disabled = on;
@@ -905,7 +921,10 @@ window.NDQInit = function () {
 
     fetch("/api/refresh", { method: "POST" })
       .then(function (r) {
-        if (!r.ok) throw new Error("HTTP " + r.status);
+        if (!r.ok) {
+          // API not available - likely on static host like GitHub Pages
+          throw new Error("API_UNAVAILABLE");
+        }
         return r.json();
       })
       .then(function (info) {
@@ -927,6 +946,19 @@ window.NDQInit = function () {
           });
       })
       .catch(function (err) {
+        // If API is unavailable, fallback to page reload (GitHub Pages mode)
+        if (err.message === "API_UNAVAILABLE" || err.message.includes("HTTP 405") || err.message.includes("Failed to fetch")) {
+          console.log("API not available, falling back to page reload");
+          setSpin(true);
+          if (pill) pill.textContent = "Reloading…";
+          toast("Reloading from latest committed data…", "ok");
+          
+          setTimeout(function () {
+            window.location.href = window.location.pathname + "?v=" + Date.now();
+          }, 800);
+          return;
+        }
+        
         if (pill) pill.textContent = "Refresh unavailable";
         toast("Live refresh needs serve.py running (got: " + err.message + ")", "err");
       })
