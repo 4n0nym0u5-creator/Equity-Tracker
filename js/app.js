@@ -850,13 +850,17 @@ window.NDQInit = function () {
 
 /* ==========================================================================
    Refresh button — re-runs the scraper via serve.py and hot-reloads the data
+   On GitHub Pages: reloads from latest committed data (static hosting)
    ========================================================================== */
 (function () {
   var btn = document.getElementById("refreshBtn");
   if (!btn) return;
   var pill = document.getElementById("asOf");
   var label = document.getElementById("refreshLabel");
-  var spinKey = "refresh-spin";
+  
+  // Detect GitHub Pages
+  var isGitHubPages = location.hostname.includes("github.io") || 
+                       location.hostname.includes("githubusercontent.com");
 
   function setSpin(on) {
     btn.disabled = on;
@@ -873,8 +877,28 @@ window.NDQInit = function () {
     t._tm = setTimeout(function () { t.className = "toast"; }, 4800);
   }
 
+  // Update tooltip based on environment
+  if (isGitHubPages) {
+    btn.title = "Reload from latest committed data (GitHub Pages)";
+  }
+
   btn.addEventListener("click", function () {
     if (btn.disabled) return;
+    
+    if (isGitHubPages) {
+      // GitHub Pages: reload page with cache-bust to get latest committed data
+      setSpin(true);
+      if (pill) pill.textContent = "Reloading…";
+      toast("Reloading from latest data…", "ok");
+      
+      // Force reload with cache-busting query param
+      setTimeout(function () {
+        window.location.href = window.location.pathname + "?v=" + Date.now();
+      }, 500);
+      return;
+    }
+    
+    // Local server: use API refresh
     setSpin(true);
     if (pill) pill.textContent = "Refreshing live data…";
     var t0 = performance.now();
