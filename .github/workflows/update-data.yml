@@ -4,30 +4,85 @@ on:
   schedule:
     - cron: '0 2 * * *'  # Run daily at 2 AM UTC
   workflow_dispatch:      # Allow manual trigger
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/update-data.yml'  # Also run when workflow itself changes
+
+# Ensure the workflow can push to the repo
+permissions:
+  contents: write
 
 jobs:
   update-data:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better commits
+          token: ${{ secrets.GITHUB_TOKEN }}
         
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
           
       - name: Install dependencies
         run: |
+          pip install --upgrade pip
           pip install pandas curl_cffi openpyxl
           
-      - name: Fetch data
-        run: python fetch_data.py
-        
-      - name: Commit and push
+      - name: Fetch fresh data
+        id: fetch
         run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
+          python fetch_data.py
+          # Extract the generated date for the commit message
+          GENERATED_DATE=$(grep -o '"generatedAt":"[^"]*"' data/dashboard.js | head -1 | cut -d'"' -f4)
+          echo "generated_date=$GENERATED_DATE" >> $GITHUB_OUTPUT
+          echo "Data generated at: $GENERATED_DATE"
+        continue-on-error: false
+        
+      - name: Check if data changed
+        id: check_changes
+        run: |
+          if git diff --quiet data/dashboard.js; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes to data/dashboard.js"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in data/dashboard.js"
+          fi
+          
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add data/dashboard.js
-          git diff --quiet && git diff --staged --quiet || git commit -m "Update dashboard data [$(date)]"
+          git commit -m "Auto-update: Refresh market data [${{ steps.fetch.outputs.generated_date }}]
+
+- Daily automated data refresh
+- Timestamp: ${{ steps.fetch.outputs.generated_date }}
+- Source: Yahoo Finance + AustralianSuper API"
           git push
+          echo "✅ Data updated successfully"
+          
+      - name: No changes needed
+        if: steps.check_changes.outputs.changed == 'false'
+        run: |
+          echo "ℹ️ No data changes to commit (data is already current)"
+          
+      - name: Workflow summary
+        run: |
+          echo "## Dashboard Data Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.check_changes.outputs.changed }}" == "true" ]; then
+            echo "✅ **Updated**: Data refreshed and committed" >> $GITHUB_STEP_SUMMARY
+            echo "- Generated: ${{ steps.fetch.outputs.generated_date }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ℹ️ **No changes**: Data is already current" >> $GITHUB_STEP_SUMMARY
+          fi
