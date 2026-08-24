@@ -230,9 +230,13 @@ window.NDQInit = function () {
    * ------------------------------------------------------------------ */
 
   var k = D.kpis;
+  
+  // Show data freshness - use dashboard generation time
+  var generatedDate = D.generatedAt ? D.generatedAt.split(" ")[0] : k.ndqDate;
+  var generatedTime = D.generatedAt ? D.generatedAt.split(" ")[1] + " " + D.generatedAt.split(" ")[2] : "";
 
   document.getElementById("asOf").textContent =
-    "Prices to " + k.ndqDate + " · AusSuper rates to " + D.trailing["AusSuper Australian Shares"].asOf;
+    "Data updated " + generatedDate + " " + generatedTime + " · Prices to " + k.ndqDate;
 
   countUp(document.getElementById("kPrice"), k.ndqPrice, 2, "$");
   document.getElementById("kPriceDate").textContent = "ASX close · " + k.ndqDate;
