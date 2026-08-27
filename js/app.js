@@ -853,8 +853,9 @@ window.NDQInit = function () {
 };
 
 /* ==========================================================================
-   Refresh button — re-runs the scraper via serve.py and hot-reloads the data
-   On GitHub Pages: reloads from latest committed data (static hosting)
+   Refresh button — SIMPLE RELIABLE VERSION
+   GitHub Pages: Hard reload with cache busting (only reliable method)
+   Local server: API call to fetch fresh data
    ========================================================================== */
 (function () {
   var btn = document.getElementById("refreshBtn");
@@ -862,24 +863,14 @@ window.NDQInit = function () {
   var pill = document.getElementById("asOf");
   var label = document.getElementById("refreshLabel");
   
-  // Detect GitHub Pages - multiple methods for reliability
-  var isGitHubPages = false;
-  try {
-    var hostname = location.hostname.toLowerCase();
-    var pathname = location.pathname.toLowerCase();
-    isGitHubPages = (
-      hostname.includes("github.io") ||
-      hostname.includes("githubusercontent.com") ||
-      pathname.includes("/equity-tracker/")
-    );
-  } catch (e) {
-    console.warn("Refresh detection error:", e);
-  }
+  // Check if we're on GitHub Pages
+  var isGitHubPages = location.hostname.includes("github.io") || 
+                      location.hostname.includes("githubusercontent");
 
   function setSpin(on) {
     btn.disabled = on;
     btn.classList.toggle("is-busy", on);
-    if (label) label.textContent = on ? "Refreshing…" : "Refresh data";
+    if (label) label.textContent = on ? "Reloading…" : "Refresh data";
   }
 
   function toast(msg, kind) {
@@ -891,62 +882,57 @@ window.NDQInit = function () {
     t._tm = setTimeout(function () { t.className = "toast"; }, 4800);
   }
 
-  // Update tooltip based on environment
-  if (isGitHubPages) {
-    btn.title = "Fetch latest data from GitHub (bypasses cache)";
-  }
-
   btn.addEventListener("click", function () {
     if (btn.disabled) return;
     
     setSpin(true);
-    if (pill) pill.textContent = "Fetching fresh data…";
-    
-    var cacheBust = "?cb=" + Date.now() + "&r=" + Math.random();
     
     if (isGitHubPages) {
-      // On GitHub Pages: Try to fetch fresh dashboard.js without page reload first
-      toast("Checking for updated data…", "ok");
+      // ON GITHUB PAGES: Only reliable method is hard reload with cache busting
+      toast("Reloading page for fresh data…", "ok");
+      if (pill) pill.textContent = "Reloading…";
       
-      fetch("data/dashboard.js" + cacheBust, { 
-        method: "GET",
-        cache: "no-store",
-        headers: { "Cache-Control": "no-cache" }
-      })
+      // Build URL with aggressive cache busting
+      var separator = window.location.href.includes("?") ? "&" : "?";
+      var newUrl = window.location.href.split("?")[0] + separator + "_=" + Date.now();
+      
+      // Use replace to force reload without keeping old page in history
+      setTimeout(function () {
+        window.location.replace(newUrl);
+      }, 300);
+      
+    } else {
+      // LOCAL SERVER: Try API, fallback to reload
+      toast("Fetching live data…", "ok");
+      
+      fetch("/api/refresh", { method: "POST", cache: "no-store" })
         .then(function (r) {
-          if (!r.ok) throw new Error("Fetch failed: " + r.status);
-          return r.text();
+          if (!r.ok) throw new Error("API down");
+          return r.json();
         })
-        .then(function (txt) {
-          var json = txt.replace(/^window\.DASHBOARD_DATA\s*=\s*/, "").replace(/;\s*$/, "");
-          var newData = JSON.parse(json);
-          var oldTime = window.DASHBOARD_DATA ? window.DASHBOARD_DATA.generatedAt : "";
-          var newTime = newData.generatedAt;
-          
-          if (newTime !== oldTime) {
-            // New data found!
-            window.DASHBOARD_DATA = newData;
-            window.NDQInit();
-            if (pill) pill.textContent = "Updated · " + newTime;
-            toast("Data updated to " + newTime.split(" ")[0], "ok");
-            setSpin(false);
-          } else {
-            // Data is already current
-            if (pill) pill.textContent = "Current · " + newTime;
-            toast("Already have latest data (" + newTime.split(" ")[0] + ")", "ok");
-            setSpin(false);
-          }
-        })
-        .catch(function (err) {
-          console.log("Direct fetch failed, falling back to hard reload:", err);
-          // Fallback: hard reload the entire page
-          toast("Reloading page for fresh data…", "ok");
+        .then(function () {
+          // API worked - reload page
+          toast("Got fresh data, reloading…", "ok");
           setTimeout(function () {
-            // Use location.reload with cache bypass
             window.location.reload(true);
-          }, 600);
+          }, 500);
+        })
+        .catch(function () {
+          // API failed - just reload
+          toast("API unavailable, reloading…", "warn");
+          setTimeout(function () {
+            window.location.replace(window.location.href.split("?")[0] + "?_=" + Date.now());
+          }, 500);
         });
-      return;
+    }
+  });
+  
+  // Clear any URL params on load (clean up cache busters)
+  if (window.location.search && isGitHubPages) {
+    var cleanUrl = window.location.href.split("?")[0];
+    window.history.replaceState({}, document.title, cleanUrl);
+  }
+})();
     }
     
     // Local server: use API refresh
