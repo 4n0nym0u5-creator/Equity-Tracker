@@ -933,58 +933,6 @@ window.NDQInit = function () {
     window.history.replaceState({}, document.title, cleanUrl);
   }
 })();
-    }
-    
-    // Local server: use API refresh
-    var t0 = performance.now();
 
-    fetch("/api/refresh", { method: "POST" })
-      .then(function (r) {
-        if (!r.ok) throw new Error("API_UNAVAILABLE");
-        return r.json();
-      })
-      .then(function (info) {
-        return fetch("data/dashboard.js" + cacheBust, { cache: "no-store" })
-          .then(function (r) { return r.text(); })
-          .then(function (txt) {
-            var json = txt.replace(/^window\.DASHBOARD_DATA\s*=\s*/, "").replace(/;\s*$/, "");
-            window.DASHBOARD_DATA = JSON.parse(json);
-            window.NDQInit();
-            var secs = ((performance.now() - t0) / 1000).toFixed(1);
-            var gen = window.DASHBOARD_DATA.generatedAt || "now";
-            if (pill) pill.textContent = "Last refresh · " + gen;
-            if (info.ok) {
-              toast("Live data refreshed in " + secs + "s", "ok");
-            } else {
-              toast("Refresh completed with warnings", "warn");
-            }
-            setSpin(false);
-          });
-      })
-      .catch(function (err) {
-        // API unavailable - try direct fetch
-        console.log("API unavailable, trying direct fetch…");
-        
-        fetch("data/dashboard.js" + cacheBust, { cache: "no-store" })
-          .then(function (r) { return r.text(); })
-          .then(function (txt) {
-            var json = txt.replace(/^window\.DASHBOARD_DATA\s*=\s*/, "").replace(/;\s*$/, "");
-            window.DASHBOARD_DATA = JSON.parse(json);
-            window.NDQInit();
-            var gen = window.DASHBOARD_DATA.generatedAt || "now";
-            if (pill) pill.textContent = "Loaded · " + gen;
-            toast("Data loaded (API unavailable)", "ok");
-            setSpin(false);
-          })
-          .catch(function (fetchErr) {
-            // Final fallback: hard reload
-            toast("Reloading page…", "ok");
-            setTimeout(function () {
-              window.location.reload(true);
-            }, 600);
-          });
-      });
-  });
-})();
 
 window.NDQInit();
