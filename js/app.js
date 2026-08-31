@@ -934,5 +934,27 @@ window.NDQInit = function () {
   }
 })();
 
+/* ==========================================================================
+   Boot loader — on EVERY page load, fetch the newest committed dashboard.js
+   directly with cache: 'no-store' + cache-bust. Falls back to the statically
+   loaded copy (file:// or fetch failure). This makes the page self-updating:
+   whatever is latest in the repo is what you see, no refresh clicks needed.
+   ========================================================================== */
+(function () {
+  function parseDataJs(txt) {
+    return JSON.parse(txt.replace(/^window\.DASHBOARD_DATA\s*=\s*/, "").replace(/;\s*$/, ""));
+  }
+  function boot() { window.NDQInit(); }
 
-window.NDQInit();
+  var staticData = window.DASHBOARD_DATA;   // from the <script> tag
+  fetch("data/dashboard.js?cb=" + Date.now(), { cache: "no-store" })
+    .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
+    .then(function (txt) {
+      var fresh = parseDataJs(txt);
+      if (!staticData || fresh.generatedAt !== staticData.generatedAt) {
+        window.DASHBOARD_DATA = fresh;
+      }
+    })
+    .catch(function () { /* keep statically loaded data */ })
+    .finally(boot);
+})();

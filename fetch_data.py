@@ -250,27 +250,94 @@ def analyze_ma200(df: pd.DataFrame) -> dict:
 # Main pipeline                                                               #
 # --------------------------------------------------------------------------- #
 
+def safe_yahoo(symbol: str, period1: int = P1) -> pd.DataFrame | None:
+    """Fetch a symbol, falling back to the cached raw JSON when the API fails."""
+    try:
+        return fetch_yahoo(symbol, period1)
+    except Exception as e:
+        print(f"  WARNING: {symbol} fetch failed ({e}); trying cached copy ...")
+        path = RAW / f"{symbol}.json"
+        if path.exists():
+            try:
+                res = json.loads(path.read_text())["chart"]["result"][0]
+                ts = res["timestamp"]
+                q = res["indicators"]["quote"][0]
+                adj = res["indicators"]["adjclose"][0]["adjclose"]
+                dates = [datetime.fromtimestamp(t, timezone.utc).astimezone(SYD).date() for t in ts]
+                df = pd.DataFrame({"date": pd.to_datetime(dates),
+                                   "close": q["close"],
+                                   "adjclose": adj}).dropna()
+                df = df.drop_duplicates(subset="date").sort_values("date").reset_index(drop=True)
+                print(f"  {symbol}: using cached data ({len(df)} rows, to {df.date.max().date()})")
+                return df
+            except Exception as e2:
+                print(f"  WARNING: cached copy for {symbol} unusable ({e2})")
+        return None
+
+
+def safe_asu():
+    """AustralianSuper API, falling back to the cached raw JSON."""
+    try:
+        return fetch_australiansuper()
+    except Exception as e:
+        print(f"  WARNING: AustralianSuper API failed ({e}); trying cached copy ...")
+        path = RAW / "australiansuper_daily.json"
+        if path.exists():
+            payload = json.loads(path.read_text())
+            frames = {}
+            for p in payload["drawing"][0]["products"]:
+                rows = [(datetime.strptime(g["day"], "%d %b %Y").date(), float(g["rate"]))
+                        for g in p["graph"]]
+                s = pd.DataFrame(rows, columns=["date", p["title"]])
+                s["date"] = pd.to_datetime(s["date"])
+                frames[p["title"]] = s.set_index("date")
+            df = frames[list(frames)[0]].join([frames[k] for k in list(frames)[1:]], how="outer").sort_index().ffill()
+            print(f"  AustralianSuper: using cached data ({len(df)} rows, to {df.index.max().date()})")
+            return df
+        raise
+
+
+def safe_official():
+    """Official published table, falling back to the cached xlsx."""
+    try:
+        return fetch_official_table()
+    except Exception as e:
+        print(f"  WARNING: official table fetch failed ({e}); trying cached copy ...")
+        import openpyxl
+        path = RAW / "australiansuper_official.xlsx"
+        wb = openpyxl.load_workbook(path, data_only=True)
+        ws = wb["Superannuation"]
+        as_of = ws.cell(row=1, column=3).value
+        out = {}
+        for row in ws.iter_rows(min_row=9, values_only=True):
+            if row[2] in ("Australian Shares", "International Shares"):
+                out[row[2]] = {"1Y": row[8] * 100, "3Y": row[10] * 100,
+                               "5Y": row[11] * 100, "10Y": row[13] * 100,
+                               "inception": str(row[17])[:10]}
+        return {"asOf": str(as_of)[:10], "options": out}
+
+
 def main():
     print("Fetching Yahoo Finance data ...")
-    ndq = fetch_yahoo("NDQ.AX")
-    hndq = fetch_yahoo("HNDQ.AX")
-    tsla = fetch_yahoo("TSLA")
-    spcx = fetch_yahoo("SPCX", period1=1770000000)
+    ndq = safe_yahoo("NDQ.AX")
+    hndq = safe_yahoo("HNDQ.AX")
+    tsla = safe_yahoo("TSLA")
+    spcx = safe_yahoo("SPCX", period1=1770000000)
     # Major US tech stocks
-    googl = fetch_yahoo("GOOGL")  # Alphabet Class A
-    goog = fetch_yahoo("GOOG")     # Alphabet Class C
-    nvda = fetch_yahoo("NVDA")
-    aapl = fetch_yahoo("AAPL")
-    nflx = fetch_yahoo("NFLX")
-    amzn = fetch_yahoo("AMZN")
-    meta = fetch_yahoo("META")
-    msft = fetch_yahoo("MSFT")
+    googl = safe_yahoo("GOOGL")  # Alphabet Class A
+    goog = safe_yahoo("GOOG")     # Alphabet Class C
+    nvda = safe_yahoo("NVDA")
+    aapl = safe_yahoo("AAPL")
+    nflx = safe_yahoo("NFLX")
+    amzn = safe_yahoo("AMZN")
+    meta = safe_yahoo("META")
+    msft = safe_yahoo("MSFT")
 
     print("Fetching AustralianSuper daily rates ...")
-    asu = fetch_australiansuper()
+    asu = safe_asu()
 
     print("Fetching AustralianSuper official returns table ...")
-    official = fetch_official_table()
+    official = safe_official()
     print(f"  official table as-of {official['asOf']}")
 
     # ---------------- 200-week MA analysis (NDQ + HNDQ + TSLA + Tech Stocks) ---------------------- #

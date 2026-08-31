@@ -9,9 +9,8 @@ venv/
 ENV/
 env/
 
-# Data files
-data/raw/*.json
-data/raw/*.xlsx
+# Data files (raw cached copies ARE committed — the GitHub Action uses them
+# as fallback when a live API is unreachable from GitHub's datacenter IPs)
 
 # IDE
 .vscode/
