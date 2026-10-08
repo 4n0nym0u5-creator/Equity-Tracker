@@ -303,6 +303,13 @@ tbody tr:last-child td { border-bottom: none; }
 .tech-card .vsma { font-size: 12px; margin-top: 8px; }
 .tech-card .vsma.pos { color: var(--green); }
 .tech-card .vsma.neg { color: var(--red); }
+.tech-card .ma-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 6px; color: var(--muted); font-size: 11.5px; }
+.tech-card .ma-row:first-of-type { margin-top: 10px; }
+.tech-card .ma-val { font-family: var(--mono); font-size: 11.5px; font-weight: 600; text-align: right; }
+.tech-card .ma-val.pos { color: var(--green); }
+.tech-card .ma-val.neg { color: var(--red); }
+.tech-card .ma-val.pending { color: var(--faint); font-weight: 400; }
+.tech-card .ma-price { color: var(--muted); font-weight: 400; }
 .tech-card .status { font-size: 11px; margin-top: 8px; padding: 6px 10px; border-radius: 8px; display: inline-block; }
 .tech-card.above .status { background: var(--green-soft); color: var(--green); }
 .tech-card.below .status { background: var(--red-soft); color: var(--red); }
@@ -322,6 +329,15 @@ tbody tr:last-child td { border-bottom: none; }
 .tech-detail .badge.above { background: var(--green-soft); color: var(--green); }
 .tech-detail .badge.below { background: var(--red-soft); color: var(--red); }
 .tech-detail .badge.pending { background: rgba(255,176,32,.12); color: var(--amber); }
+.ma-strip { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.ma-chip {
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  padding: 4px 10px; border-radius: 6px;
+  background: var(--card); border: 1px solid var(--card-border); color: var(--muted);
+}
+.ma-chip.above { color: var(--green); border-color: rgba(0,208,156,.3); background: var(--green-soft); }
+.ma-chip.below { color: var(--red); border-color: rgba(255,92,108,.3); background: var(--red-soft); }
+.ma-chip.pending { color: var(--faint); font-weight: 400; }
 
 /* small print under charts ------------------------------------------------------ */
 .footnote-line {

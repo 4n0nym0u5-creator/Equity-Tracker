@@ -406,13 +406,19 @@ window.NDQInit = function () {
       var isAbove = hasMa && data.vsMaPct >= 0;
       var statusClass = hasMa ? (isAbove ? "above" : "below") : "pending";
       var statusText = hasMa ? (isAbove ? "ABOVE 200WMA" : "● BUY ZONE") : "200WMA PENDING";
-      var vsmaLine = hasMa
-        ? '<div class="vsma ' + (isAbove ? "pos" : "neg") + '">' + (isAbove ? "+" : "") + nf2.format(data.vsMaPct) + '% vs 200WMA</div>'
-        : '<div class="vsma">' + data.weeksOfData + '/200 weeks collected</div>';
+      function maLine(label, pct, maVal) {
+        if (pct == null) return '<div class="vsma ma-row">' + label + '<span class="ma-val">pending</span></div>';
+        return '<div class="vsma ma-row">' + label +
+          '<span class="ma-val ' + (pct >= 0 ? "pos" : "neg") + '">' +
+          (pct >= 0 ? "+" : "") + nf2.format(pct) + '% ' + (pct >= 0 ? "over" : "under") +
+          ' <span class="ma-price">$' + nf2.format(maVal) + '</span></span></div>';
+      }
       return '<div class="tech-card ' + statusClass + '">' +
         '<div class="ticker" style="color:' + s.color + '">' + s.key + '</div>' +
         '<div class="price">$' + nf2.format(data.price) + '</div>' +
-        vsmaLine +
+        maLine("50WMA", data.vsMa50Pct, data.ma50) +
+        maLine("100WMA", data.vsMa100Pct, data.ma100) +
+        maLine("200WMA", data.vsMaPct, data.ma200) +
         '<div class="status">' + statusText + '</div>' +
       '</div>';
     }).join("");
@@ -526,11 +532,21 @@ window.NDQInit = function () {
         ? (isAbove ? "ABOVE 200WMA" : "BUY ZONE ACTIVE")
         : "200WMA PENDING · " + kpi.weeksOfData + "/200 weeks";
 
+      function maChip(label, pct) {
+        if (pct == null) return '<span class="ma-chip pending">' + label + ' pending</span>';
+        return '<span class="ma-chip ' + (pct >= 0 ? "above" : "below") + '">' + label + " " +
+          (pct >= 0 ? "+" : "") + nf2.format(pct) + "% " + (pct >= 0 ? "over" : "under") + '</span>';
+      }
+      var maStrip = hasMa
+        ? '<div class="ma-strip">' + maChip("50WMA", kpi.vsMa50Pct) + maChip("100WMA", kpi.vsMa100Pct) + maChip("200WMA", kpi.vsMaPct) + '</div>'
+        : "";
+
       return '<div class="tech-detail">' +
         '<div class="tech-detail-header">' +
           '<h4 style="color:' + s.color + '">' + s.key + ' — ' + s.name + '</h4>' +
           '<span class="badge ' + (hasMa ? (isAbove ? "above" : "below") : "pending") + '">' + maNote + '</span>' +
         '</div>' +
+        maStrip +
         (hasMa ? '' : '<div class="footnote-line">Listed June 2025 — the 200-week MA needs 200 weeks of history and will first appear around mid-2029. Chart shows price history only for now.</div>') +
         '<div id="' + chartId + '" class="chart" style="height: 280px;"></div>' +
       '</div>';
