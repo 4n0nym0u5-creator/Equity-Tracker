@@ -393,7 +393,9 @@ window.NDQInit = function () {
     { key: "MSFT", name: "Microsoft", color: "#00BCF2" },
     { key: "NFLX", name: "Netflix", color: "#E50914" },
     { key: "NVDA", name: "NVIDIA", color: "#76B900" },
-    { key: "BMNR", name: "BitMine Immersion", color: "#ff7ab6" }
+    { key: "BMNR", name: "BitMine Immersion", color: "#ff7ab6" },
+    { key: "TSLA", name: "Tesla", color: "#ff4d6d" },
+    { key: "SPCX", name: "SpaceX", color: "#e8ecf4" }
   ];
 
   // Build summary grid
@@ -401,6 +403,11 @@ window.NDQInit = function () {
   if (techGrid) {
     techGrid.innerHTML = TECH_STOCKS.map(function(s) {
       var data = D[s.key.toLowerCase() + "Kpi"];
+      if (s.key === "SPCX" && !data) {
+        var sx = D.spcx;
+        data = sx ? { price: sx.price, date: sx.date, ma50: null, ma100: null, ma200: null,
+                      vsMaPct: null, vsMa50Pct: null, vsMa100Pct: null } : null;
+      }
       if (!data || data.price == null) return "";
       var hasMa = data.vsMaPct !== null && data.vsMaPct !== undefined;
       var isAbove = hasMa && data.vsMaPct >= 0;
@@ -425,11 +432,7 @@ window.NDQInit = function () {
   }
 
   // Build horizontal bar chart of distance from the selected MA (switchable)
-  var MA_CHART_STOCKS = TECH_STOCKS.concat([
-    { key: "TSLA", name: "Tesla", color: COLORS.tsla },
-    { key: "SPCX", name: "SpaceX", color: COLORS.spcx },
-  ]);
-  var techMaData = MA_CHART_STOCKS.map(function(s) {
+  var techMaData = TECH_STOCKS.map(function(s) {
     var data = D[s.key.toLowerCase() + "Kpi"];
     if (!data) {
       return { key: s.key, color: s.color, v50: null, v100: null, v200: null };
@@ -570,6 +573,20 @@ window.NDQInit = function () {
       var weekly = D[s.key.toLowerCase() + "Weekly"];
       var zones = D[s.key.toLowerCase() + "Zones"];
       var kpi = D[s.key.toLowerCase() + "Kpi"];
+      if (s.key === "SPCX") {
+        return '<div class="tech-detail">' +
+          '<div class="tech-detail-header">' +
+            '<h4 style="color:' + s.color + '">' + s.key + ' — ' + s.name + '</h4>' +
+            '<span class="badge pending">MA PENDING</span>' +
+          '</div>' +
+          '<div class="ma-strip">' +
+            '<span class="ma-chip pending">50WMA pending</span>' +
+            '<span class="ma-chip pending">100WMA pending</span>' +
+            '<span class="ma-chip pending">200WMA pending</span>' +
+          '</div>' +
+          '<div class="footnote-line">SpaceX (SPCX) listed 12 Jun 2026 — the 50-week MA needs 50 weeks of history and will first appear around mid-2027. See the Tesla &amp; SpaceX section for its valuation journey.</div>' +
+        '</div>';
+      }
       if (!weekly || !kpi) return "";
       
       var isAbove = kpi.vsMaPct != null && kpi.vsMaPct >= 0;
