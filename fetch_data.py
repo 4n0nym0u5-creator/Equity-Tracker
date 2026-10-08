@@ -202,6 +202,8 @@ def analyze_ma200(df: pd.DataFrame) -> dict:
     """Weekly close, 200-week SMA, contiguous below-MA buy zones, and status KPIs."""
     w = weekly_last(df, "close")
     w["ma200"] = w["close"].rolling(200, min_periods=200).mean()
+    w["ma100"] = w["close"].rolling(100, min_periods=100).mean()
+    w["ma50"] = w["close"].rolling(50, min_periods=50).mean()
     w["below"] = w["ma200"].notna() & (w["close"] < w["ma200"])
 
     zones, cur = [], None
@@ -220,12 +222,16 @@ def analyze_ma200(df: pd.DataFrame) -> dict:
 
     latest = df.iloc[-1]
     latest_ma = w["ma200"].dropna().iloc[-1] if w["ma200"].notna().any() else None
+    latest_ma100 = w["ma100"].dropna().iloc[-1] if w["ma100"].notna().any() else None
+    latest_ma50 = w["ma50"].dropna().iloc[-1] if w["ma50"].notna().any() else None
 
     return {
         "weekly": {
             "dates": [d.strftime("%Y-%m-%d") for d in w["date"]],
             "close": [r2(v) for v in w["close"]],
             "ma200": [r2(v) if not pd.isna(v) else None for v in w["ma200"]],
+            "ma100": [r2(v) if not pd.isna(v) else None for v in w["ma100"]],
+            "ma50": [r2(v) if not pd.isna(v) else None for v in w["ma50"]],
             "below": [bool(b) for b in w["below"]],
         },
         "zones": [{
@@ -238,6 +244,10 @@ def analyze_ma200(df: pd.DataFrame) -> dict:
             "price": r2(latest["close"]),
             "date": latest["date"].strftime("%Y-%m-%d"),
             "ma200": r2(latest_ma) if latest_ma is not None else None,
+            "ma100": r2(latest_ma100) if latest_ma100 is not None else None,
+            "ma50": r2(latest_ma50) if latest_ma50 is not None else None,
+            "vsMa50Pct": r2((latest["close"] / latest_ma50 - 1) * 100) if latest_ma50 else None,
+            "vsMa100Pct": r2((latest["close"] / latest_ma100 - 1) * 100) if latest_ma100 else None,
             "vsMaPct": r2((latest["close"] / latest_ma - 1) * 100) if latest_ma else None,
             "inBuyZone": bool(latest_ma is not None and latest["close"] < latest_ma),
             "weeksInBuyZone": int(w["below"].sum()),
@@ -516,9 +526,9 @@ def main():
         "msftWeekly": msft_a["weekly"],
         "msftZones": msft_a["zones"],
         "msftKpi": msft_a["kpi"],
-        "bmnrWeekly": bmnr_a["weekly"] if bmnr_a else {"dates": [], "close": [], "ma200": [], "below": []},
+        "bmnrWeekly": bmnr_a["weekly"] if bmnr_a else {"dates": [], "close": [], "ma200": [], "ma100": [], "ma50": [], "below": []},
         "bmnrZones": bmnr_a["zones"] if bmnr_a else [],
-        "bmnrKpi": bmnr_a["kpi"] if bmnr_a else {"price": None, "date": None, "ma200": None, "vsMaPct": None, "inBuyZone": False, "weeksInBuyZone": 0, "weeksWithMa": 0, "weeksOfData": 0, "buyZoneCount": 0},
+        "bmnrKpi": bmnr_a["kpi"] if bmnr_a else {"price": None, "date": None, "ma200": None, "ma100": None, "ma50": None, "vsMaPct": None, "vsMa50Pct": None, "vsMa100Pct": None, "inBuyZone": False, "weeksInBuyZone": 0, "weeksWithMa": 0, "weeksOfData": 0, "buyZoneCount": 0},
         "spcx": spcx_block,
         "spacexVal": spacex_val,
         "growth": growth,
