@@ -306,6 +306,8 @@ tbody tr:last-child td { border-bottom: none; }
 .tech-card .status { font-size: 11px; margin-top: 8px; padding: 6px 10px; border-radius: 8px; display: inline-block; }
 .tech-card.above .status { background: var(--green-soft); color: var(--green); }
 .tech-card.below .status { background: var(--red-soft); color: var(--red); }
+.tech-card.pending { border-color: rgba(255,176,32,.35); background: linear-gradient(160deg, rgba(255,176,32,.08), rgba(255,255,255,.03) 55%); }
+.tech-card.pending .status { background: rgba(255,176,32,.12); color: var(--amber); }
 
 .tech-cards { margin-top: 24px; display: grid; gap: 16px; }
 .tech-detail {
@@ -319,6 +321,7 @@ tbody tr:last-child td { border-bottom: none; }
 .tech-detail .badge { font-family: var(--mono); font-size: 11px; padding: 4px 10px; border-radius: 6px; }
 .tech-detail .badge.above { background: var(--green-soft); color: var(--green); }
 .tech-detail .badge.below { background: var(--red-soft); color: var(--red); }
+.tech-detail .badge.pending { background: rgba(255,176,32,.12); color: var(--amber); }
 
 /* small print under charts ------------------------------------------------------ */
 .footnote-line {

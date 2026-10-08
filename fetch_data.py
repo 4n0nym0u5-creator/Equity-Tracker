@@ -242,6 +242,7 @@ def analyze_ma200(df: pd.DataFrame) -> dict:
             "inBuyZone": bool(latest_ma is not None and latest["close"] < latest_ma),
             "weeksInBuyZone": int(w["below"].sum()),
             "weeksWithMa": int(w["ma200"].notna().sum()),
+            "weeksOfData": int(len(w)),
             "buyZoneCount": len(zones),
         },
     }
@@ -332,6 +333,7 @@ def main():
     amzn = safe_yahoo("AMZN")
     meta = safe_yahoo("META")
     msft = safe_yahoo("MSFT")
+    bmnr = safe_yahoo("BMNR")  # BitMine Immersion — listed Jun 2025, short history
 
     print("Fetching AustralianSuper daily rates ...")
     asu = safe_asu()
@@ -353,6 +355,7 @@ def main():
     amzn_a = analyze_ma200(amzn)
     meta_a = analyze_ma200(meta)
     msft_a = analyze_ma200(msft)
+    bmnr_a = analyze_ma200(bmnr) if bmnr is not None else None
 
     # ---------------- rebased growth indices -------------------------------- #
     ndq_idx = rebase(ndq.set_index("date")["adjclose"])          # total return
@@ -411,6 +414,7 @@ def main():
         "AMZN": rebase(amzn.set_index("date")["adjclose"]),
         "META": rebase(meta.set_index("date")["adjclose"]),
         "MSFT": rebase(msft.set_index("date")["adjclose"]),
+        "BMNR": rebase(bmnr.set_index("date")["adjclose"]),
         "AusSuper International Shares": asu_idx["International Shares"],
         "AusSuper Australian Shares": asu_idx["Australian Shares"],
     }
@@ -512,6 +516,9 @@ def main():
         "msftWeekly": msft_a["weekly"],
         "msftZones": msft_a["zones"],
         "msftKpi": msft_a["kpi"],
+        "bmnrWeekly": bmnr_a["weekly"] if bmnr_a else {"dates": [], "close": [], "ma200": [], "below": []},
+        "bmnrZones": bmnr_a["zones"] if bmnr_a else [],
+        "bmnrKpi": bmnr_a["kpi"] if bmnr_a else {"price": None, "date": None, "ma200": None, "vsMaPct": None, "inBuyZone": False, "weeksInBuyZone": 0, "weeksWithMa": 0, "weeksOfData": 0, "buyZoneCount": 0},
         "spcx": spcx_block,
         "spacexVal": spacex_val,
         "growth": growth,

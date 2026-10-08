@@ -370,7 +370,8 @@ window.NDQInit = function () {
     { key: "META", name: "Meta", color: "#0081FB" },
     { key: "MSFT", name: "Microsoft", color: "#00BCF2" },
     { key: "NFLX", name: "Netflix", color: "#E50914" },
-    { key: "NVDA", name: "NVIDIA", color: "#76B900" }
+    { key: "NVDA", name: "NVIDIA", color: "#76B900" },
+    { key: "BMNR", name: "BitMine Immersion", color: "#ff7ab6" }
   ];
 
   // Build summary grid
@@ -378,30 +379,34 @@ window.NDQInit = function () {
   if (techGrid) {
     techGrid.innerHTML = TECH_STOCKS.map(function(s) {
       var data = D[s.key.toLowerCase() + "Kpi"];
-      if (!data) return "";
-      var isAbove = data.vsMaPct >= 0;
-      var statusClass = isAbove ? "above" : "below";
-      var statusText = isAbove ? "ABOVE 200WMA" : "● BUY ZONE";
+      if (!data || data.price == null) return "";
+      var hasMa = data.vsMaPct !== null && data.vsMaPct !== undefined;
+      var isAbove = hasMa && data.vsMaPct >= 0;
+      var statusClass = hasMa ? (isAbove ? "above" : "below") : "pending";
+      var statusText = hasMa ? (isAbove ? "ABOVE 200WMA" : "● BUY ZONE") : "200WMA PENDING";
+      var vsmaLine = hasMa
+        ? '<div class="vsma ' + (isAbove ? "pos" : "neg") + '">' + (isAbove ? "+" : "") + nf2.format(data.vsMaPct) + '% vs 200WMA</div>'
+        : '<div class="vsma">' + data.weeksOfData + '/200 weeks collected</div>';
       return '<div class="tech-card ' + statusClass + '">' +
         '<div class="ticker" style="color:' + s.color + '">' + s.key + '</div>' +
         '<div class="price">$' + nf2.format(data.price) + '</div>' +
-        '<div class="vsma ' + (isAbove ? "pos" : "neg") + '">' +
-          (isAbove ? "+" : "") + nf2.format(data.vsMaPct) + '% vs 200WMA' +
-        '</div>' +
+        vsmaLine +
         '<div class="status">' + statusText + '</div>' +
       '</div>';
     }).join("");
   }
 
-  // Build horizontal bar chart showing distance from 200WMA
+  // Build horizontal bar chart showing distance from 200WMA (stocks with an MA only)
   var techMaData = TECH_STOCKS.map(function(s) {
     var data = D[s.key.toLowerCase() + "Kpi"];
+    if (!data || data.vsMaPct == null) return null;
     return {
       name: s.key,
-      value: data ? data.vsMaPct : 0,
+      value: data.vsMaPct,
       itemStyle: { color: s.color }
     };
-  }).sort(function(a, b) { return b.value - a.value; });
+  }).filter(function(x) { return x !== null; })
+    .sort(function(a, b) { return b.value - a.value; });
 
   makeChart("chartTechMa", {
     animationDuration: 900,
@@ -447,20 +452,24 @@ window.NDQInit = function () {
       var kpi = D[s.key.toLowerCase() + "Kpi"];
       if (!weekly || !kpi) return "";
       
-      var isAbove = kpi.vsMaPct >= 0;
+      var isAbove = kpi.vsMaPct != null && kpi.vsMaPct >= 0;
+      var hasMa = kpi.vsMaPct !== null && kpi.vsMaPct !== undefined;
       var chartId = "chartTech" + s.key;
-      
+
       setTimeout(function() {
         buildMaChart(chartId, weekly, zones, s.key, s.color);
       }, i * 100);
-      
+
+      var maNote = hasMa
+        ? (isAbove ? "ABOVE 200WMA" : "BUY ZONE ACTIVE")
+        : "200WMA PENDING · " + kpi.weeksOfData + "/200 weeks";
+
       return '<div class="tech-detail">' +
         '<div class="tech-detail-header">' +
           '<h4 style="color:' + s.color + '">' + s.key + ' — ' + s.name + '</h4>' +
-          '<span class="badge ' + (isAbove ? "above" : "below") + '">' +
-            (isAbove ? "ABOVE 200WMA" : "BUY ZONE ACTIVE") +
-          '</span>' +
+          '<span class="badge ' + (hasMa ? (isAbove ? "above" : "below") : "pending") + '">' + maNote + '</span>' +
         '</div>' +
+        (hasMa ? '' : '<div class="footnote-line">Listed June 2025 — the 200-week MA needs 200 weeks of history and will first appear around mid-2029. Chart shows price history only for now.</div>') +
         '<div id="' + chartId + '" class="chart" style="height: 280px;"></div>' +
       '</div>';
     }).join("");
@@ -784,6 +793,7 @@ window.NDQInit = function () {
     { name: "NDQ.AX", sub: "BetaShares NASDAQ 100 ETF · ASX", color: COLORS.ndq, key: "NDQ.AX" },
     { name: "HNDQ.AX", sub: "BetaShares NASDAQ 100 · AUD hedged", color: COLORS.hndq, key: "HNDQ.AX" },
     { name: "TSLA", sub: "Tesla Inc · NASDAQ · data from Jan 2015", color: COLORS.tsla, key: "TSLA" },
+    { name: "BMNR", sub: "BitMine Immersion · NYSE American · listed Jun 2025", color: "#ff7ab6", key: "BMNR" },
     { name: "SPCX", sub: "SpaceX · NASDAQ · IPO 12 Jun 2026", color: COLORS.spcx, key: "SPCX", sinceIpo: true },
     { name: "AusSuper International Shares", sub: "DIY Mix option · crediting rates", color: COLORS.asIntl, key: "AusSuper International Shares" },
     { name: "AusSuper Australian Shares", sub: "DIY Mix option · crediting rates", color: COLORS.asAus, key: "AusSuper Australian Shares" },
@@ -811,7 +821,7 @@ window.NDQInit = function () {
     periods.forEach(function (p) {
       var v = t[p];
       if (v == null) {
-        var why = r.key === "SPCX" ? "listed Jun 2026" : "fund too young";
+        var why = r.key === "SPCX" ? "listed Jun 2026" : (r.key === "BMNR" ? "listed Jun 2025" : "insufficient history");
         html += "<td class='na'>n/a<span class='cell-sub'>" + why + "</span></td>";
       } else {
         var cls = (Math.abs(v - best[p]) < 0.005) ? "best" : (v >= 0 ? "pos" : "neg");
