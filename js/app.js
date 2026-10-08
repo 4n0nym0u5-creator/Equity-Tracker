@@ -418,21 +418,29 @@ window.NDQInit = function () {
     }).join("");
   }
 
-  // Build horizontal bar chart showing distance from 200WMA (stocks with an MA only)
+  // Build horizontal grouped bar chart: distance from 50W / 100W / 200W MA
   var techMaData = TECH_STOCKS.map(function(s) {
     var data = D[s.key.toLowerCase() + "Kpi"];
     if (!data || data.vsMaPct == null) return null;
     return {
-      name: s.key,
-      value: data.vsMaPct,
-      itemStyle: { color: s.color }
+      key: s.key,
+      color: s.color,
+      v50: data.vsMa50Pct,
+      v100: data.vsMa100Pct,
+      v200: data.vsMaPct,
     };
   }).filter(function(x) { return x !== null; })
-    .sort(function(a, b) { return b.value - a.value; });
+    .sort(function(a, b) { return b.v200 - a.v200; });
 
   makeChart("chartTechMa", {
     animationDuration: 900,
-    grid: { left: 80, right: 40, top: 20, bottom: 20 },
+    grid: { left: 80, right: 56, top: 46, bottom: 20 },
+    legend: {
+      top: 4, left: 6,
+      textStyle: { color: "#8b94a7", fontFamily: FONT, fontSize: 12 },
+      itemGap: 20, icon: "roundRect", itemWidth: 14, itemHeight: 4,
+    },
+    tooltip: baseTooltip(function (v) { return v == null ? "n/a" : (v >= 0 ? "+" : "") + nf2.format(v) + "%"; }),
     xAxis: {
       type: "value",
       axisLabel: { formatter: "{value}%", color: COLORS.axis, fontFamily: MONO, fontSize: 11 },
@@ -441,28 +449,60 @@ window.NDQInit = function () {
     },
     yAxis: {
       type: "category",
-      data: techMaData.map(function(d) { return d.name; }),
+      data: techMaData.map(function(d) { return d.key; }),
       axisLabel: { color: "#aab2c5", fontFamily: MONO, fontSize: 12, fontWeight: 700 },
       axisLine: { show: false },
       axisTick: { show: false }
     },
-    series: [{
-      type: "bar",
-      data: techMaData,
-      barWidth: 18,
-      label: {
-        show: true,
-        position: "right",
-        formatter: function(p) { return (p.value >= 0 ? "+" : "") + nf2.format(p.value) + "%"; },
-        color: "#aab2c5", fontFamily: MONO, fontSize: 10
+    series: [
+      {
+        name: "vs 50WMA",
+        type: "bar",
+        barMaxWidth: 10,
+        itemStyle: { color: COLORS.ma50, borderRadius: [0, 3, 3, 0] },
+        emphasis: { focus: "series" },
+        data: techMaData.map(function(d) { return d.v50; }),
+        label: {
+          show: true, position: "right",
+          formatter: function (p) { return p.value == null ? "" : (p.value >= 0 ? "+" : "") + nf2.format(p.value) + "%"; },
+          color: COLORS.ma50, fontFamily: MONO, fontSize: 9,
+        },
       },
-      markLine: {
-        silent: true,
-        symbol: "none",
-        lineStyle: { color: "#5c6679", type: "dashed", width: 1 },
-        data: [{ xAxis: 0 }]
-      }
-    }]
+      {
+        name: "vs 100WMA",
+        type: "bar",
+        barMaxWidth: 10,
+        itemStyle: { color: COLORS.ma100, borderRadius: [0, 3, 3, 0] },
+        emphasis: { focus: "series" },
+        data: techMaData.map(function(d) { return d.v100; }),
+        label: {
+          show: true, position: "right",
+          formatter: function (p) { return p.value == null ? "" : (p.value >= 0 ? "+" : "") + nf2.format(p.value) + "%"; },
+          color: COLORS.ma100, fontFamily: MONO, fontSize: 9,
+        },
+      },
+      {
+        name: "vs 200WMA",
+        type: "bar",
+        barMaxWidth: 10,
+        itemStyle: { borderRadius: [0, 3, 3, 0] },
+        emphasis: { focus: "series" },
+        data: techMaData.map(function(d) {
+          return { value: d.v200, itemStyle: { color: d.color } };
+        }),
+        label: {
+          show: true, position: "right",
+          formatter: function (p) { return p.value == null ? "" : (p.value >= 0 ? "+" : "") + nf2.format(p.value) + "%"; },
+          color: "#aab2c5", fontFamily: MONO, fontSize: 9,
+        },
+        markLine: {
+          silent: true,
+          symbol: "none",
+          lineStyle: { color: "#5c6679", type: "dashed", width: 1 },
+          data: [{ xAxis: 0 }]
+        }
+      },
+    ]
   });
 
   // Build detail cards with 200WMA charts for each stock
