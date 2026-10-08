@@ -425,10 +425,15 @@ window.NDQInit = function () {
   }
 
   // Build horizontal bar chart of distance from the selected MA (switchable)
-  var techMaData = TECH_STOCKS.map(function(s) {
+  var MA_CHART_STOCKS = TECH_STOCKS.concat([
+    { key: "TSLA", name: "Tesla", color: COLORS.tsla },
+    { key: "SPCX", name: "SpaceX", color: COLORS.spcx },
+  ]);
+  var techMaData = MA_CHART_STOCKS.map(function(s) {
     var data = D[s.key.toLowerCase() + "Kpi"];
-    if (!data) return null;
-    if (data.vsMaPct == null && data.vsMa50Pct == null && data.vsMa100Pct == null) return null;
+    if (!data) {
+      return { key: s.key, color: s.color, v50: null, v100: null, v200: null };
+    }
     return {
       key: s.key,
       color: s.color,
@@ -436,7 +441,7 @@ window.NDQInit = function () {
       v100: data.vsMa100Pct,
       v200: data.vsMaPct,
     };
-  }).filter(function(x) { return x !== null; })
+  })
     .sort(function (a, b) { return maSortVal(b.v200) - maSortVal(a.v200); });
 
   function pctLabel(p) { return p == null ? "" : (p >= 0 ? "+" : "") + nf2.format(p) + "%"; }
