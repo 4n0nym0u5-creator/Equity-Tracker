@@ -205,7 +205,13 @@
       <div class="card-head">
         <div>
           <h3>MA Status — All Stocks · 50W / 100W / 200W</h3>
-          <div class="hint">Percent above/below each moving average (negative = below that MA · grey = MA not yet available)</div>
+          <div class="hint">Percent above/below the selected moving average (negative = below that MA)</div>
+        </div>
+        <div class="legend-chips" id="techMaToggle">
+          <button type="button" class="chip-btn active" data-mode="all">All</button>
+          <button type="button" class="chip-btn" data-mode="50">50WMA</button>
+          <button type="button" class="chip-btn" data-mode="100">100WMA</button>
+          <button type="button" class="chip-btn" data-mode="200">200WMA</button>
         </div>
       </div>
       <div id="chartTechMa" class="chart chart-md"></div>

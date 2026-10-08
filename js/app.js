@@ -424,7 +424,7 @@ window.NDQInit = function () {
     }).join("");
   }
 
-  // Build horizontal grouped bar chart: distance from 50W / 100W / 200W MA
+  // Build horizontal bar chart of distance from the selected MA (switchable)
   var techMaData = TECH_STOCKS.map(function(s) {
     var data = D[s.key.toLowerCase() + "Kpi"];
     if (!data || data.vsMaPct == null) return null;
@@ -435,42 +435,44 @@ window.NDQInit = function () {
       v100: data.vsMa100Pct,
       v200: data.vsMaPct,
     };
-  }).filter(function(x) { return x !== null; })
-    .sort(function(a, b) { return b.v200 - a.v200; });
+  }).filter(function(x) { return x !== null; });
 
-  makeChart("chartTechMa", {
-    animationDuration: 900,
-    grid: { left: 80, right: 56, top: 46, bottom: 20 },
-    legend: {
-      top: 4, left: 6,
-      textStyle: { color: "#8b94a7", fontFamily: FONT, fontSize: 12 },
-      itemGap: 20, icon: "roundRect", itemWidth: 14, itemHeight: 4,
-    },
-    tooltip: baseTooltip(function (v) { return v == null ? "n/a" : (v >= 0 ? "+" : "") + nf2.format(v) + "%"; }),
-    xAxis: {
-      type: "value",
-      axisLabel: { formatter: "{value}%", color: COLORS.axis, fontFamily: MONO, fontSize: 11 },
-      splitLine: { lineStyle: { color: COLORS.split } },
-      axisLine: { lineStyle: { color: COLORS.split } }
-    },
-    yAxis: {
-      type: "category",
-      data: techMaData.map(function(d) { return d.key; }),
-      axisLabel: { color: "#aab2c5", fontFamily: MONO, fontSize: 12, fontWeight: 700 },
-      axisLine: { show: false },
-      axisTick: { show: false }
-    },
-    series: [
+  function pctLabel(p) { return p == null ? "" : (p >= 0 ? "+" : "") + nf2.format(p) + "%"; }
+
+  function techMaOption(mode) {
+    var single = mode === "50" || mode === "100" || mode === "200";
+    var key = mode === "50" ? "v50" : mode === "100" ? "v100" : "v200";
+    var sorted = techMaData.slice().sort(function (a, b) { return b[key] - a[key]; });
+
+    var series = single ? [{
+      name: mode === "50" ? "vs 50WMA" : mode === "100" ? "vs 100WMA" : "vs 200WMA",
+      type: "bar",
+      barMaxWidth: 14,
+      itemStyle: { borderRadius: [0, 3, 3, 0] },
+      data: sorted.map(function (d) {
+        return { value: d[key], itemStyle: { color: d[key] >= 0 ? COLORS.green : COLORS.red } };
+      }),
+      label: {
+        show: true, position: "right",
+        formatter: function (p) { return pctLabel(p.value); },
+        color: "#aab2c5", fontFamily: MONO, fontSize: 10,
+      },
+      markLine: {
+        silent: true, symbol: "none",
+        lineStyle: { color: "#5c6679", type: "dashed", width: 1 },
+        data: [{ xAxis: 0 }],
+      },
+    }] : [
       {
         name: "vs 50WMA",
         type: "bar",
         barMaxWidth: 10,
         itemStyle: { color: COLORS.ma50, borderRadius: [0, 3, 3, 0] },
         emphasis: { focus: "series" },
-        data: techMaData.map(function(d) { return d.v50; }),
+        data: techMaData.map(function (d) { return d.v50; }),
         label: {
           show: true, position: "right",
-          formatter: function (p) { return p.value == null ? "" : (p.value >= 0 ? "+" : "") + nf2.format(p.value) + "%"; },
+          formatter: function (p) { return pctLabel(p.value); },
           color: COLORS.ma50, fontFamily: MONO, fontSize: 9,
         },
       },
@@ -480,10 +482,10 @@ window.NDQInit = function () {
         barMaxWidth: 10,
         itemStyle: { color: COLORS.ma100, borderRadius: [0, 3, 3, 0] },
         emphasis: { focus: "series" },
-        data: techMaData.map(function(d) { return d.v100; }),
+        data: techMaData.map(function (d) { return d.v100; }),
         label: {
           show: true, position: "right",
-          formatter: function (p) { return p.value == null ? "" : (p.value >= 0 ? "+" : "") + nf2.format(p.value) + "%"; },
+          formatter: function (p) { return pctLabel(p.value); },
           color: COLORS.ma100, fontFamily: MONO, fontSize: 9,
         },
       },
@@ -493,23 +495,63 @@ window.NDQInit = function () {
         barMaxWidth: 10,
         itemStyle: { borderRadius: [0, 3, 3, 0] },
         emphasis: { focus: "series" },
-        data: techMaData.map(function(d) {
+        data: techMaData.map(function (d) {
           return { value: d.v200, itemStyle: { color: d.color } };
         }),
         label: {
           show: true, position: "right",
-          formatter: function (p) { return p.value == null ? "" : (p.value >= 0 ? "+" : "") + nf2.format(p.value) + "%"; },
+          formatter: function (p) { return pctLabel(p.value); },
           color: "#aab2c5", fontFamily: MONO, fontSize: 9,
         },
         markLine: {
-          silent: true,
-          symbol: "none",
+          silent: true, symbol: "none",
           lineStyle: { color: "#5c6679", type: "dashed", width: 1 },
-          data: [{ xAxis: 0 }]
-        }
+          data: [{ xAxis: 0 }],
+        },
       },
-    ]
-  });
+    ];
+
+    return {
+      animationDuration: 500,
+      grid: { left: 80, right: 56, top: single ? 20 : 46, bottom: 20 },
+      legend: {
+        show: !single,
+        top: 4, left: 6,
+        textStyle: { color: "#8b94a7", fontFamily: FONT, fontSize: 12 },
+        itemGap: 20, icon: "roundRect", itemWidth: 14, itemHeight: 4,
+      },
+      tooltip: baseTooltip(function (v) { return v == null ? "n/a" : pctLabel(v); }),
+      xAxis: {
+        type: "value",
+        axisLabel: { formatter: "{value}%", color: COLORS.axis, fontFamily: MONO, fontSize: 11 },
+        splitLine: { lineStyle: { color: COLORS.split } },
+        axisLine: { lineStyle: { color: COLORS.split } }
+      },
+      yAxis: {
+        type: "category",
+        data: sorted.map(function (d) { return d.key; }),
+        axisLabel: { color: "#aab2c5", fontFamily: MONO, fontSize: 12, fontWeight: 700 },
+        axisLine: { show: false },
+        axisTick: { show: false }
+      },
+      series: series,
+    };
+  }
+
+  var techMaChart = makeChart("chartTechMa", techMaOption("all"));
+  var techMaToggle = document.getElementById("techMaToggle");
+  if (techMaToggle) {
+    techMaToggle.addEventListener("click", function (e) {
+      var btn = e.target.closest("button[data-mode]");
+      if (!btn) return;
+      Array.prototype.forEach.call(techMaToggle.querySelectorAll("button"), function (b) {
+        b.classList.toggle("active", b === btn);
+      });
+      if (techMaChart) {
+        techMaChart.setOption(techMaOption(btn.getAttribute("data-mode")), { replaceMerge: ["series", "yAxis"] });
+      }
+    });
+  }
 
   // Build detail cards with 200WMA charts for each stock
   var techCards = document.getElementById("techCards");
@@ -534,8 +576,8 @@ window.NDQInit = function () {
 
       function maChip(label, pct) {
         if (pct == null) return '<span class="ma-chip pending">' + label + ' pending</span>';
-        return '<span class="ma-chip ' + (pct >= 0 ? "above" : "below") + '">' + label + " " +
-          (pct >= 0 ? "+" : "") + nf2.format(pct) + "% " + (pct >= 0 ? "over" : "under") + '</span>';
+        return '<span class="ma-chip ' + (pct >= 0 ? "above" : "below") + '">' + label +
+          (pct >= 0 ? " OVER +" : " UNDER ") + nf2.format(Math.abs(pct)) + "%</span>";
       }
       var maStrip = hasMa
         ? '<div class="ma-strip">' + maChip("50WMA", kpi.vsMa50Pct) + maChip("100WMA", kpi.vsMa100Pct) + maChip("200WMA", kpi.vsMaPct) + '</div>'
